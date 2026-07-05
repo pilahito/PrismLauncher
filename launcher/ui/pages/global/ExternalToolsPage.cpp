@@ -108,27 +108,36 @@ void ExternalToolsPage::applyAppearance(bool legacyMode)
 
     setStyleSheet(R"(
         QWidget#ExternalToolsPage {
-            background-color: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #0f172a, stop:1 #111827);
+            background-color: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #07111f, stop:1 #111827);
             color: #f8fafc;
         }
         QFrame#headerFrame {
-            background-color: rgba(15, 23, 42, 0.92);
+            background-color: rgba(15, 23, 42, 0.95);
             border: 1px solid rgba(129, 140, 248, 0.35);
-            border-radius: 14px;
+            border-radius: 16px;
+            padding: 10px 14px;
+        }
+        QLabel#pageTitle {
+            font-size: 18px;
+            font-weight: 700;
+            color: #f8fafc;
+        }
+        QLabel#pageSubtitle {
+            color: #cbd5e1;
         }
         QGroupBox {
-            border: 1px solid rgba(129, 140, 248, 0.35);
+            border: 1px solid rgba(129, 140, 248, 0.28);
             border-radius: 12px;
             margin-top: 10px;
-            padding: 8px;
-            background-color: rgba(15, 23, 42, 0.78);
+            padding: 10px;
+            background-color: rgba(15, 23, 42, 0.82);
         }
         QGroupBox::title {
             subcontrol-origin: margin;
             left: 12px;
             padding: 0 6px;
             color: #8b5cf6;
-            font-weight: 600;
+            font-weight: 700;
         }
         QLabel {
             color: #e2e8f0;
@@ -139,6 +148,10 @@ void ExternalToolsPage::applyAppearance(bool legacyMode)
             padding: 7px 10px;
             background-color: rgba(255, 255, 255, 0.06);
             color: #f8fafc;
+        }
+        QLineEdit:focus {
+            border: 1px solid rgba(129, 140, 248, 0.8);
+            background-color: rgba(255, 255, 255, 0.10);
         }
         QPushButton {
             border: 1px solid rgba(129, 140, 248, 0.35);
@@ -151,8 +164,26 @@ void ExternalToolsPage::applyAppearance(bool legacyMode)
         QPushButton:hover {
             background-color: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #818cf8, stop:1 #a78bfa);
         }
+        QPushButton:pressed {
+            background-color: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #4f46e5, stop:1 #7c3aed);
+        }
         QCheckBox {
             color: #e2e8f0;
+        }
+        QCheckBox::indicator {
+            border: 1px solid rgba(129, 140, 248, 0.4);
+            border-radius: 4px;
+            width: 14px;
+            height: 14px;
+            background-color: rgba(255, 255, 255, 0.06);
+        }
+        QCheckBox::indicator:checked {
+            background-color: #8b5cf6;
+            border-color: #a78bfa;
+        }
+        QScrollArea {
+            border: 0;
+            background: transparent;
         }
     )");
 }

@@ -47,7 +47,7 @@
         <item>
          <widget class="QLabel" name="pageSubtitle">
           <property name="text">
-           <string>Modern controls with an optional classic layout for older workflows.</string>
+           <string>Configure the tools and editors you use for modding, debugging, and world editing in one place.</string>
           </property>
           <property name="wordWrap">
            <bool>true</bool>

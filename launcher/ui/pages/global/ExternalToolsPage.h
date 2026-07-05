@@ -50,7 +50,7 @@ class ExternalToolsPage : public QWidget, public BasePage {
     explicit ExternalToolsPage(QWidget* parent = 0);
     ~ExternalToolsPage();
 
-    QString displayName() const override { return tr("Tools"); }
+    QString displayName() const override { return tr("Tools & Editors"); }
     QIcon icon() const override
     {
         auto icon = QIcon::fromTheme("externaltools");
@@ -67,6 +67,7 @@ class ExternalToolsPage : public QWidget, public BasePage {
    private:
     void loadSettings();
     void applySettings();
+    void applyAppearance(bool legacyMode);
 
    private:
     Ui::ExternalToolsPage* ui;
