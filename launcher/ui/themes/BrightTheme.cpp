@@ -49,19 +49,19 @@ QString BrightTheme::name()
 QPalette BrightTheme::colorScheme()
 {
     QPalette brightPalette;
-    brightPalette.setColor(QPalette::Window, QColor(255, 255, 255));
-    brightPalette.setColor(QPalette::WindowText, QColor(17, 17, 17));
-    brightPalette.setColor(QPalette::Base, QColor(250, 250, 250));
-    brightPalette.setColor(QPalette::AlternateBase, QColor(240, 240, 240));
-    brightPalette.setColor(QPalette::ToolTipBase, QColor(17, 17, 17));
+    brightPalette.setColor(QPalette::Window, QColor(245, 247, 251));
+    brightPalette.setColor(QPalette::WindowText, QColor(28, 36, 51));
+    brightPalette.setColor(QPalette::Base, QColor(255, 255, 255));
+    brightPalette.setColor(QPalette::AlternateBase, QColor(242, 246, 252));
+    brightPalette.setColor(QPalette::ToolTipBase, QColor(28, 36, 51));
     brightPalette.setColor(QPalette::ToolTipText, QColor(255, 255, 255));
-    brightPalette.setColor(QPalette::Text, Qt::black);
-    brightPalette.setColor(QPalette::Button, QColor(249, 249, 249));
-    brightPalette.setColor(QPalette::ButtonText, Qt::black);
-    brightPalette.setColor(QPalette::BrightText, Qt::red);
+    brightPalette.setColor(QPalette::Text, QColor(28, 36, 51));
+    brightPalette.setColor(QPalette::Button, QColor(255, 255, 255));
+    brightPalette.setColor(QPalette::ButtonText, QColor(28, 36, 51));
+    brightPalette.setColor(QPalette::BrightText, QColor(255, 88, 88));
     brightPalette.setColor(QPalette::Link, QColor(37, 137, 164));
-    brightPalette.setColor(QPalette::Highlight, QColor(137, 207, 84));
-    brightPalette.setColor(QPalette::HighlightedText, Qt::black);
+    brightPalette.setColor(QPalette::Highlight, QColor(91, 124, 255));
+    brightPalette.setColor(QPalette::HighlightedText, Qt::white);
     return fadeInactive(brightPalette, fadeAmount(), fadeColor());
 }
 
@@ -82,7 +82,106 @@ bool BrightTheme::hasStyleSheet()
 
 QString BrightTheme::appStyleSheet()
 {
-    return QString();
+    return R"(
+        QMainWindow, QDialog, QDockWidget {
+            background-color: #f5f7fb;
+            color: #1c2433;
+        }
+        QWidget {
+            color: #1c2433;
+            background-color: transparent;
+        }
+        QToolBar {
+            background-color: rgba(255, 255, 255, 0.92);
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            border-radius: 14px;
+            padding: 6px;
+            spacing: 6px;
+        }
+        QToolButton, QPushButton {
+            background-color: #ffffff;
+            border: 1px solid rgba(15, 23, 42, 0.1);
+            border-radius: 10px;
+            padding: 8px 12px;
+            min-height: 24px;
+            color: #1c2433;
+        }
+        QToolButton:hover, QPushButton:hover {
+            background-color: #eef3ff;
+            border-color: rgba(91, 124, 255, 0.35);
+        }
+        QToolButton:pressed, QPushButton:pressed {
+            background-color: #e2eaff;
+        }
+        QLineEdit, QTextEdit, QPlainTextEdit, QSpinBox, QDoubleSpinBox, QComboBox {
+            background-color: #ffffff;
+            border: 1px solid rgba(15, 23, 42, 0.1);
+            border-radius: 10px;
+            padding: 7px 10px;
+            color: #1c2433;
+            selection-background-color: #5b7cff;
+        }
+        QComboBox::drop-down {
+            border: none;
+        }
+        QScrollBar:vertical {
+            background: transparent;
+            width: 10px;
+            margin: 0;
+        }
+        QScrollBar::handle:vertical {
+            background: rgba(15, 23, 42, 0.16);
+            border-radius: 5px;
+            min-height: 24px;
+        }
+        QListView, QTreeView, QTableView {
+            background-color: #fcfdff;
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            border-radius: 14px;
+            padding: 6px;
+            alternate-background-color: #f4f7fd;
+        }
+        QListView::item, QTreeView::item, QTableView::item {
+            border-radius: 10px;
+            padding: 8px 10px;
+            margin: 2px 0px;
+        }
+        QListView::item:selected, QTreeView::item:selected, QTableView::item:selected {
+            background-color: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #5b7cff, stop:1 #41d3ae);
+            color: #ffffff;
+        }
+        QMenu {
+            background-color: #ffffff;
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            border-radius: 12px;
+            padding: 6px;
+        }
+        QMenu::item {
+            border-radius: 8px;
+            padding: 8px 12px;
+        }
+        QMenu::item:selected {
+            background-color: #eef3ff;
+        }
+        QTabBar::tab {
+            background-color: #ffffff;
+            border: 1px solid rgba(15, 23, 42, 0.1);
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+            padding: 8px 12px;
+            margin-right: 4px;
+        }
+        QTabBar::tab:selected {
+            background-color: #eef3ff;
+        }
+        QToolTip {
+            color: #1c2433;
+            background-color: #f7faff;
+            border: 1px solid rgba(15, 23, 42, 0.12);
+            border-radius: 8px;
+            padding: 6px;
+        }
+    )";
 }
 QString BrightTheme::tooltip()
 {

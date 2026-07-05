@@ -24,6 +24,49 @@
     <number>0</number>
    </property>
    <item>
+    <widget class="QFrame" name="headerFrame">
+     <property name="frameShape">
+      <enum>QFrame::StyledPanel</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Raised</enum>
+     </property>
+     <layout class="QHBoxLayout" name="headerLayout">
+      <item>
+       <layout class="QVBoxLayout" name="titleLayout">
+        <item>
+         <widget class="QLabel" name="pageTitle">
+          <property name="text">
+           <string>Tools &amp; Editors</string>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">font-size: 18px; font-weight: 600;</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="pageSubtitle">
+          <property name="text">
+           <string>Modern controls with an optional classic layout for older workflows.</string>
+          </property>
+          <property name="wordWrap">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="legacyModeCheckBox">
+        <property name="text">
+         <string>Use classic layout</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
     <widget class="QScrollArea" name="scrollArea">
      <property name="widgetResizable">
       <bool>true</bool>

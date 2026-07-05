@@ -72,13 +72,26 @@ ListViewDelegate::ListViewDelegate(QObject* parent) : QStyledItemDelegate(parent
 
 void drawSelectionRect(QPainter* painter, const QStyleOptionViewItem& option, const QRect& rect)
 {
-    if ((option.state & QStyle::State_Selected))
-        painter->fillRect(rect, option.palette.brush(QPalette::Highlight));
-    else {
+    painter->save();
+    painter->setRenderHint(QPainter::Antialiasing, true);
+
+    if (option.state & QStyle::State_Selected) {
+        QColor accent = QColor(91, 124, 255);
+        accent.setAlpha(220);
+        painter->setPen(QPen(accent, 1));
+        painter->setBrush(QColor(22, 31, 53));
+        painter->drawRoundedRect(rect.adjusted(2, 2, -2, -2), 16, 16);
+        painter->setBrush(QColor(91, 124, 255));
+        painter->drawRect(QRect(rect.left() + 2, rect.top() + 2, 3, rect.height() - 4));
+    } else {
         QColor backgroundColor = option.palette.color(QPalette::Window);
-        backgroundColor.setAlpha(160);
-        painter->fillRect(rect, QBrush(backgroundColor));
+        backgroundColor.setAlpha(180);
+        painter->setPen(QPen(QColor(255, 255, 255, 24), 1));
+        painter->setBrush(backgroundColor);
+        painter->drawRoundedRect(rect.adjusted(2, 2, -2, -2), 16, 16);
     }
+
+    painter->restore();
 }
 
 void drawFocusRect(QPainter* painter, const QStyleOptionViewItem& option, const QRect& rect)
@@ -190,22 +203,18 @@ void ListViewDelegate::paint(QPainter* painter, const QStyleOptionViewItem& opti
 
     QStyle* style = opt.widget ? opt.widget->style() : QApplication::style();
 
-    // const int iconSize =  style->pixelMetric(QStyle::PM_IconViewIconSize);
-    const int iconSize = 48;
-    QRect iconbox = opt.rect;
+    const int iconSize = 54;
+    QRect iconbox = opt.rect.adjusted(14, 10, -14, -10);
+    iconbox.setHeight(iconSize);
+    iconbox.setWidth(iconSize);
     const int textMargin = style->pixelMetric(QStyle::PM_FocusFrameHMargin, 0, opt.widget) + 1;
-    QRect textRect = opt.rect;
-    QRect textHighlightRect = textRect;
-    // clip the decoration on top, remove width padding
-    textRect.adjust(textMargin, iconSize + textMargin + 5, -textMargin, 0);
-
-    textHighlightRect.adjust(0, iconSize + 5, 0, 0);
+    QRect textRect = opt.rect.adjusted(12, 72, -12, -12);
+    QRect textHighlightRect = opt.rect.adjusted(8, 8, -8, -8);
 
     // draw background
     {
-        // FIXME: unused
-        // QSize textSize = viewItemTextSize ( &opt );
-        drawSelectionRect(painter, opt, textHighlightRect);
+        QRect cardRect = opt.rect.adjusted(8, 8, -8, -8);
+        drawSelectionRect(painter, opt, cardRect);
         /*
         QPalette::ColorGroup cg;
         QStyleOptionViewItem opt2(opt);
@@ -272,8 +281,10 @@ void ListViewDelegate::paint(QPainter* painter, const QStyleOptionViewItem& opti
 
     // draw the icon
     {
-        iconbox.setHeight(iconSize);
+        painter->save();
+        painter->setRenderHint(QPainter::Antialiasing, true);
         opt.icon.paint(painter, iconbox, Qt::AlignCenter, mode, state);
+        painter->restore();
     }
     // set the text colors
     QPalette::ColorGroup cg = opt.state & QStyle::State_Enabled ? QPalette::Normal : QPalette::Disabled;
@@ -300,7 +311,7 @@ void ListViewDelegate::paint(QPainter* painter, const QStyleOptionViewItem& opti
 
     const int lineCount = textLayout.lineCount();
 
-    const QRect layoutRect = QStyle::alignedRect(opt.direction, opt.displayAlignment, QSize(textRect.width(), int(height)), textRect);
+    const QRect layoutRect = QStyle::alignedRect(opt.direction, Qt::AlignLeft | Qt::AlignTop, QSize(textRect.width(), int(height)), textRect);
     const QPointF position = layoutRect.topLeft();
     for (int i = 0; i < lineCount; ++i) {
         const QTextLine line = textLayout.lineAt(i);
@@ -330,11 +341,11 @@ QSize ListViewDelegate::sizeHint(const QStyleOptionViewItem& option, const QMode
 
     QStyle* style = opt.widget ? opt.widget->style() : QApplication::style();
     const int textMargin = style->pixelMetric(QStyle::PM_FocusFrameHMargin, &option, opt.widget) + 1;
-    int height = 48 + textMargin * 2 + 5;  // TODO: turn constants into variables
+    int height = 88 + textMargin * 2 + 5;  // TODO: turn constants into variables
     QSize szz = viewItemTextSize(&opt);
     height += szz.height();
     // FIXME: maybe the icon items could scale and keep proportions?
-    QSize sz(100, height);
+    QSize sz(140, height);
     return sz;
 }
 

@@ -56,7 +56,11 @@ ExternalToolsPage::ExternalToolsPage(QWidget* parent) : QWidget(parent), ui(new 
     ui->mceditLink->setOpenExternalLinks(true);
     ui->jvisualvmLink->setOpenExternalLinks(true);
     ui->jprofilerLink->setOpenExternalLinks(true);
+
+    connect(ui->legacyModeCheckBox, &QCheckBox::toggled, this, &ExternalToolsPage::on_legacyModeCheckBox_toggled);
+
     loadSettings();
+    applyAppearance(ui->legacyModeCheckBox->isChecked());
 }
 
 ExternalToolsPage::~ExternalToolsPage()
@@ -73,6 +77,7 @@ void ExternalToolsPage::loadSettings()
 
     // Editors
     ui->jsonEditorTextBox->setText(s->get("JsonEditor").toString());
+    ui->legacyModeCheckBox->setChecked(s->get("ExternalToolsClassicMode").toBool());
 }
 void ExternalToolsPage::applySettings()
 {
@@ -91,6 +96,70 @@ void ExternalToolsPage::applySettings()
         }
     }
     s->set("JsonEditor", jsonEditor);
+    s->set("ExternalToolsClassicMode", ui->legacyModeCheckBox->isChecked());
+}
+
+void ExternalToolsPage::applyAppearance(bool legacyMode)
+{
+    if (legacyMode) {
+        setStyleSheet(QString());
+        return;
+    }
+
+    setStyleSheet(R"(
+        QWidget#ExternalToolsPage {
+            background-color: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #0f172a, stop:1 #111827);
+            color: #f8fafc;
+        }
+        QFrame#headerFrame {
+            background-color: rgba(15, 23, 42, 0.92);
+            border: 1px solid rgba(129, 140, 248, 0.35);
+            border-radius: 14px;
+        }
+        QGroupBox {
+            border: 1px solid rgba(129, 140, 248, 0.35);
+            border-radius: 12px;
+            margin-top: 10px;
+            padding: 8px;
+            background-color: rgba(15, 23, 42, 0.78);
+        }
+        QGroupBox::title {
+            subcontrol-origin: margin;
+            left: 12px;
+            padding: 0 6px;
+            color: #8b5cf6;
+            font-weight: 600;
+        }
+        QLabel {
+            color: #e2e8f0;
+        }
+        QLineEdit {
+            border: 1px solid rgba(129, 140, 248, 0.35);
+            border-radius: 8px;
+            padding: 7px 10px;
+            background-color: rgba(255, 255, 255, 0.06);
+            color: #f8fafc;
+        }
+        QPushButton {
+            border: 1px solid rgba(129, 140, 248, 0.35);
+            border-radius: 8px;
+            padding: 7px 12px;
+            background-color: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #6366f1, stop:1 #8b5cf6);
+            color: white;
+            font-weight: 600;
+        }
+        QPushButton:hover {
+            background-color: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #818cf8, stop:1 #a78bfa);
+        }
+        QCheckBox {
+            color: #e2e8f0;
+        }
+    )");
+}
+
+void ExternalToolsPage::on_legacyModeCheckBox_toggled(bool checked)
+{
+    applyAppearance(checked);
 }
 
 void ExternalToolsPage::on_jprofilerPathBtn_clicked()

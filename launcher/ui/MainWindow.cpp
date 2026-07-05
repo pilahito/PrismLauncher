@@ -57,6 +57,7 @@
 #include <QButtonGroup>
 #include <QFileDialog>
 #include <QHBoxLayout>
+#include <QVBoxLayout>
 #include <QHeaderView>
 #include <QInputDialog>
 #include <QKeyEvent>
@@ -149,6 +150,22 @@ QString profileInUseFilter(const QString& profile, bool used)
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+
+    // Basic placeholder Instances page so the mainContent host shows something on startup
+    if (ui->mainContent) {
+        QWidget* instancesPage = new QWidget(this);
+        QVBoxLayout* v = new QVBoxLayout(instancesPage);
+        v->setContentsMargins(12, 12, 12, 12);
+        QLabel* title = new QLabel(tr("Instances"), instancesPage);
+        QFont f = title->font(); f.setPointSize(18); f.setBold(true); title->setFont(f);
+        title->setObjectName(QStringLiteral("instancesPageTitle"));
+        v->addWidget(title);
+        ui->mainContent->addWidget(instancesPage);
+        ui->mainContent->setCurrentWidget(instancesPage);
+    }
+    if (ui->btnInstances) {
+        ui->btnInstances->setChecked(true);
+    }
 
     setWindowIcon(APPLICATION->logo());
     setWindowTitle(APPLICATION->applicationDisplayName());
