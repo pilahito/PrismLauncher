@@ -209,7 +209,9 @@ void ListViewDelegate::paint(QPainter* painter, const QStyleOptionViewItem& opti
     iconbox.setWidth(iconSize);
     const int textMargin = style->pixelMetric(QStyle::PM_FocusFrameHMargin, 0, opt.widget) + 1;
     QRect textRect = opt.rect.adjusted(12, 72, -12, -12);
+    Q_UNUSED(textMargin);
     QRect textHighlightRect = opt.rect.adjusted(8, 8, -8, -8);
+    Q_UNUSED(textHighlightRect);
 
     // draw background
     {
