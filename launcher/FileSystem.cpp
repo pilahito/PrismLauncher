@@ -57,13 +57,15 @@
 #include "PSaveFile.h"
 #include "StringUtils.h"
 
-#if defined Q_OS_WIN32
-#ifndef NOMINMAX
+#if defined(Q_OS_WIN32)
+#ifdef NOMINMAX
+#undef NOMINMAX
+#endif
 #define NOMINMAX
+#ifdef WIN32_LEAN_AND_MEAN
+#undef WIN32_LEAN_AND_MEAN
 #endif
-#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
-#endif
 #include <objidl.h>
 #include <shlguid.h>
 #include <shobjidl.h>
