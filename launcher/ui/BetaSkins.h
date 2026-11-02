@@ -2,6 +2,9 @@
 #pragma once
 
 #include <QColor>
+#include <QCoreApplication>
+#include <QFileInfo>
+#include <QProcess>
 #include <QFileDialog>
 #include <QHBoxLayout>
 #include <QImage>
@@ -141,6 +144,24 @@ inline QWidget* page(QWidget* parent)
 
     row->addStretch();
     layout->addLayout(row);
+
+    // Editor avanzado XArt (de Gangstos, licencia MIT), incluido en la carpeta xart de la beta.
+    auto xartRow = new QHBoxLayout;
+    auto xart = new QPushButton(BetaShell::t("Open XArt editor", "Abrir editor XArt"), content);
+    xart->setStyleSheet(buttonStyle);
+    xartRow->addWidget(xart);
+    xartRow->addWidget(BetaShell::hint(BetaShell::t("Advanced editor by Gangstos (MIT license).", "Editor avanzado de Gangstos (licencia MIT)."), content));
+    xartRow->addStretch();
+    layout->addLayout(xartRow);
+    QObject::connect(xart, &QPushButton::clicked, content, [content] {
+        const QString exe = QCoreApplication::applicationDirPath() + QStringLiteral("/xart/XArtSkinEditor.exe");
+        if (!QFileInfo::exists(exe)) {
+            QMessageBox::warning(content, BetaShell::t("XArt editor", "Editor XArt"),
+                                 BetaShell::t("The XArt editor is not installed in this build.", "El editor XArt no está instalado en esta compilación."));
+            return;
+        }
+        QProcess::startDetached(exe, {});
+    });
     layout->addStretch();
     return BetaShell::scrollPage(content, parent);
 }
