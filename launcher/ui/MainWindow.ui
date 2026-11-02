@@ -31,7 +31,7 @@
      <widget class="QWidget" name="leftSidebar">
       <property name="minimumSize">
        <size>
-        <width>92</width>
+        <width>176</width>
         <height>0</height>
        </size>
       </property>
@@ -40,16 +40,16 @@
       </property>
       <layout class="QVBoxLayout" name="sidebarLayout">
        <property name="spacing">
-        <number>12</number>
+        <number>8</number>
        </property>
        <property name="leftMargin">
-        <number>8</number>
+        <number>14</number>
        </property>
        <property name="topMargin">
         <number>12</number>
        </property>
        <property name="rightMargin">
-        <number>8</number>
+        <number>14</number>
        </property>
        <property name="bottomMargin">
         <number>12</number>

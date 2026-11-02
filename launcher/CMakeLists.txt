@@ -1220,6 +1220,7 @@ qt_add_resources(LAUNCHER_RESOURCES
     resources/flat/flat.qrc
     resources/flat_white/flat_white.qrc
     resources/documents/documents.qrc
+    resources/beta_covers/beta_covers.qrc
     resources/shaders/shaders.qrc
     "${CMAKE_CURRENT_BINARY_DIR}/../${Launcher_Branding_LogoQRC}"
 )

@@ -73,6 +73,7 @@ ResourceDownloadDialog::ResourceDownloadDialog(QWidget* parent, ResourceFolderMo
     okButton->setEnabled(false);
     okButton->setDefault(true);
     okButton->setAutoDefault(true);
+    okButton->setProperty("betaPrimary", true);
     okButton->setText(tr("Review and confirm"));
     okButton->setShortcut(tr("Ctrl+Return"));
 

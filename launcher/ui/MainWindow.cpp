@@ -44,6 +44,7 @@
 
 #include "MainWindow.h"
 #include "ui_MainWindow.h"
+#include "HardwareInfo.h"
 
 #include <QDir>
 #include <QFileInfo>
@@ -54,11 +55,18 @@
 #include <QAction>
 #include <QActionGroup>
 #include <QApplication>
+#include <QGuiApplication>
+#include <QScreen>
 #include <QButtonGroup>
 #include <QFileDialog>
+#include <QGraphicsDropShadowEffect>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QFormLayout>
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QHeaderView>
+#include <QImage>
 #include <QInputDialog>
 #include <QKeyEvent>
 #include <QLabel>
@@ -67,8 +75,12 @@
 #include <QMenuBar>
 #include <QMessageBox>
 #include <QProgressDialog>
+#include <QPainter>
+#include <QPushButton>
 #include <QShortcut>
+#include <QShowEvent>
 #include <QStatusBar>
+#include <QTabBar>
 #include <QToolBar>
 #include <QToolButton>
 #include <QWidget>
@@ -136,7 +148,28 @@
 
 #include "MMCTime.h"
 
+#include "VideoBeta.h"
+#include "BetaShell.h"
+#include "BetaSkins.h"
 namespace {
+class InstanceGroupFilterModel : public InstanceProxyModel {
+public:
+    using InstanceProxyModel::InstanceProxyModel;
+    void setGroupFilter(QString group) { m_group = std::move(group); invalidateFilter(); }
+
+protected:
+    bool filterAcceptsRow(int sourceRow, const QModelIndex& parent) const override
+    {
+        const auto sourceIndex = sourceModel()->index(sourceRow, 0, parent);
+        if (!m_group.isEmpty() && sourceIndex.data(InstanceViewRoles::GroupRole).toString() != m_group)
+            return false;
+        return QSortFilterProxyModel::filterAcceptsRow(sourceRow, parent);
+    }
+
+private:
+    QString m_group;
+};
+
 QString profileInUseFilter(const QString& profile, bool used)
 {
     if (used) {
@@ -149,24 +182,283 @@ QString profileInUseFilter(const QString& profile, bool used)
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWindow)
 {
+    Q_INIT_RESOURCE(beta_covers);
     ui->setupUi(this);
+    setWindowFlag(Qt::FramelessWindowHint);
+    ui->centralWidget->setContentsMargins(6, 6, 6, 6);
+    new VideoBeta::WindowFrame(ui->centralWidget);
+    QLineEdit* instanceSearch = nullptr;
+    QTabBar* instanceGroups = nullptr;
+    QStackedWidget* libraryStack = nullptr;
+    QWidget* emptyDashboard = nullptr;
+    ui->leftSidebar->hide();
+    ui->centralWidget->setStyleSheet("QWidget#centralWidget { background: #191e27; }");
+    auto page = new QWidget(this);
+    auto shellLayout = new QVBoxLayout(page);
+    shellLayout->setContentsMargins(6, 0, 6, 6);
+    shellLayout->setSpacing(8);
+    shellLayout->addWidget(new VideoBeta::TitleBar(page));
+    auto shellRow = new QHBoxLayout;
+    shellRow->setSpacing(12);
+    shellLayout->addLayout(shellRow, 1);
+    auto instancesPage = new QWidget(page);
+    auto root = new QVBoxLayout(instancesPage);
+    root->setContentsMargins(0, 0, 0, 0);
+    root->setSpacing(10);
+    auto toolbar = new QHBoxLayout;
+    toolbar->setSpacing(14);
+    auto makeButton = [this](const QString& text, const QString& iconName, QWidget* parent) {
+        auto b = new QToolButton(parent);
+        b->setText(text); b->setIcon(VideoBeta::icon(iconName)); b->setIconSize(QSize(21,21));
+        b->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+        b->setCursor(Qt::PointingHandCursor); b->setMinimumHeight(38);
+        b->setStyleSheet("QToolButton { background: qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 #2d3440,stop:1 #242a35); border: 1px solid #3b4350; border-radius: 7px; padding: 5px 14px; font-size: 14px; color: #dce1e9; } QToolButton:hover { background: #343f4d; border-color: #6198ab; } QToolButton:disabled { color: #788491; }");
+        return b;
+    };
+    auto add = makeButton(BetaShell::t("Add Instance","Añadir instancia"), "add", page);
+    add->setObjectName("betaAddInstanceButton"); VideoBeta::glow(add);
+    connect(add, &QToolButton::clicked, ui->actionAddInstance, &QAction::trigger);
+    toolbar->addWidget(add);
+    auto folders = makeButton(BetaShell::t("Folders","Carpetas"), "folder", page);
+    folders->setMenu(ui->foldersMenu); folders->setPopupMode(QToolButton::InstantPopup); toolbar->addWidget(folders);
+    auto settings = makeButton(BetaShell::t("Settings","Ajustes"), "settings", page); toolbar->addWidget(settings);
+    connect(settings, &QToolButton::clicked, this, [this] { VideoBeta::showSettings(this); });
+    auto accounts = makeButton(BetaShell::t("Accounts","Cuentas"), "user", page); toolbar->addWidget(accounts);
+    connect(accounts, &QToolButton::clicked, this, [this, accounts] {
+        if (auto menu = ui->actionAccountsButton->menu()) menu->exec(accounts->mapToGlobal(QPoint(0,accounts->height())));
+        else APPLICATION->ShowGlobalSettings(this, "accounts");
+    });
+    toolbar->addStretch();
+    // Buscador de la barra superior (como en el vídeo); filtra las instancias con el modelo de grupos.
+    instanceSearch = new QLineEdit(page);
+    instanceSearch->setPlaceholderText(BetaShell::t("Search", "Buscar"));
+    instanceSearch->setClearButtonEnabled(true);
+    instanceSearch->setMinimumWidth(260);
+    instanceSearch->setStyleSheet("QLineEdit { background: #191e27; border: 1px solid #3b4553; border-radius: 8px; padding: 7px 12px; color: #dbe3ee; }"
+                                  "QLineEdit:focus { border-color: #62d0e6; }");
+    toolbar->addWidget(instanceSearch);
+    auto device = makeButton("", "device", page); device->setToolTip(BetaShell::t("Check for Updates", "Comprobar actualizaciones del lanzador")); toolbar->addWidget(device);
+    connect(device, &QToolButton::clicked, ui->actionCheckUpdate, &QAction::trigger);
+    root->addLayout(toolbar);
 
-    // Basic placeholder Instances page so the mainContent host shows something on startup
-    if (ui->mainContent) {
-        QWidget* instancesPage = new QWidget(this);
-        QVBoxLayout* v = new QVBoxLayout(instancesPage);
-        v->setContentsMargins(12, 12, 12, 12);
-        QLabel* title = new QLabel(tr("Instances"), instancesPage);
-        QFont f = title->font(); f.setPointSize(18); f.setBold(true); title->setFont(f);
-        title->setObjectName(QStringLiteral("instancesPageTitle"));
-        v->addWidget(title);
-        ui->mainContent->addWidget(instancesPage);
-        ui->mainContent->setCurrentWidget(instancesPage);
-    }
-    if (ui->btnInstances) {
-        ui->btnInstances->setChecked(true);
-    }
+    auto tabRow = new QHBoxLayout;
+    instanceGroups = new VideoBeta::Tabs(page);
+    instanceGroups->setExpanding(false); instanceGroups->setDrawBase(false);
+    for (const auto& text : {"Instances","Mods","Clients","Modded","Textures"}) instanceGroups->addTab(QString::fromLatin1(text));
+    instanceGroups->setStyleSheet("QTabBar::tab { color: #cbd1da; background: #232a35; border: 1px solid #3c4654; border-top: 3px solid #657284; border-bottom: 0; border-top-left-radius: 7px; border-top-right-radius: 7px; padding: 9px 25px; margin-right: 4px; font-size: 13px; } QTabBar::tab:selected { color: #ffffff; background: #303b48; border-top-color: #75c7e6; }");
+    const QList<QColor> tabColors={QColor("#d6e6ed"),QColor("#e8b176"),QColor("#91c79b"),QColor("#a2b2eb"),QColor("#dd949e")};
+    for(int i=0;i<tabColors.size();++i) instanceGroups->setTabTextColor(i,tabColors[i]);
+    tabRow->addWidget(instanceGroups);
+    tabRow->addStretch();
+    auto viewMode = makeButton("", "list", page); viewMode->setToolTip(BetaShell::t("Toggle grid / list", "Alternar cuadrícula / lista")); tabRow->addWidget(viewMode);
+    root->addLayout(tabRow);
+    auto body = new QHBoxLayout; body->setSpacing(0);
+    auto library = new QFrame(page);
+    library->setStyleSheet("QFrame { background: #242c37; border: 1px solid #394451; border-radius: 10px; }");
+    auto libraryLayout = new QHBoxLayout(library); libraryLayout->setContentsMargins(0,0,0,0); libraryLayout->setSpacing(0);
+    libraryStack = new QStackedWidget(library);
+    emptyDashboard = new QWidget(libraryStack);
+    auto welcome = new QVBoxLayout(emptyDashboard);
+    welcome->setContentsMargins(32, 40, 32, 40);
+    welcome->addStretch();
+    auto welcomeTitle = new QLabel(BetaShell::t("Your next adventure starts here", "Tu próxima aventura empieza aquí"), emptyDashboard);
+    welcomeTitle->setAlignment(Qt::AlignCenter);
+    welcomeTitle->setWordWrap(true);
+    welcomeTitle->setStyleSheet("color: #e6edf5; font-size: 23px; font-weight: 600; border: none; background: transparent;");
+    welcome->addWidget(welcomeTitle);
+    auto welcomeText = new QLabel(BetaShell::t("Create a Minecraft instance or import your modpack.\nYour games will appear here with their own cover.", "Crea una instancia de Minecraft o importa tu modpack.\nTus partidas aparecerán aquí con su propia portada."), emptyDashboard);
+    welcomeText->setAlignment(Qt::AlignCenter);
+    welcomeText->setWordWrap(true);
+    welcomeText->setStyleSheet("color: #a4afbf; font-size: 14px; padding: 12px; border: none; background: transparent;");
+    welcome->addWidget(welcomeText);
+    auto createInstance = makeButton(BetaShell::t("Create my first instance", "Crear mi primera instancia"), "add", emptyDashboard);
+    VideoBeta::glow(createInstance);
+    connect(createInstance, &QToolButton::clicked, ui->actionAddInstance, &QAction::trigger);
+    welcome->addWidget(createInstance, 0, Qt::AlignHCenter);
+    welcome->addStretch();
+    libraryStack->addWidget(emptyDashboard); libraryLayout->addWidget(libraryStack,1);
+    // Barra de acciones inferior: botones grandes en fila y el uso de memoria a la derecha.
+    auto side = new QFrame(page); side->setFixedHeight(78);
+    side->setObjectName("betaActionBar");
+    side->setStyleSheet("QFrame#betaActionBar { background: #242c37; border: 1px solid #394451; border-radius: 10px; }");
+    auto sideLayout = new QHBoxLayout(side); sideLayout->setContentsMargins(12,10,12,10); sideLayout->setSpacing(10);
+    auto launch = makeButton(BetaShell::t("Launch","Lanzar"),"play",side); launch->setObjectName("betaLaunchButton"); launch->setMinimumHeight(52); VideoBeta::glow(launch);
+    connect(launch,&QToolButton::clicked,ui->actionLaunchInstance,&QAction::trigger);
+    connect(ui->actionLaunchInstance,&QAction::changed,launch,[launch,this] { launch->setEnabled(ui->actionLaunchInstance->isEnabled()); });
+    launch->setEnabled(false); launch->setMinimumWidth(170); sideLayout->addWidget(launch);
+    auto fork = makeButton(BetaShell::t("Copy instance","Copiar"),"fork",side); sideLayout->addWidget(fork);
+    connect(fork, &QToolButton::clicked, ui->actionCopyInstance, &QAction::trigger);
+    connect(ui->actionCopyInstance, &QAction::changed, fork, [this, fork] { fork->setEnabled(ui->actionCopyInstance->isEnabled()); });
+    fork->setEnabled(false);
+    auto edit = makeButton(BetaShell::t("Edit","Editar"),"edit",side); sideLayout->addWidget(edit);
+    connect(edit, &QToolButton::clicked, ui->actionEditInstance, &QAction::trigger);
+    connect(ui->actionEditInstance, &QAction::changed, edit, [this, edit] { edit->setEnabled(ui->actionEditInstance->isEnabled()); });
+    edit->setEnabled(false);
+    auto folder = makeButton(BetaShell::t("Folder","Carpeta"),"folder",side); sideLayout->addWidget(folder); folder->setEnabled(false);
+    connect(folder,&QToolButton::clicked,ui->actionViewSelectedInstFolder,&QAction::trigger);
+    connect(ui->actionViewSelectedInstFolder,&QAction::changed,folder,[this,folder] { folder->setEnabled(ui->actionViewSelectedInstFolder->isEnabled()); });
+    sideLayout->addStretch();
+    auto ramColumn = new QVBoxLayout; ramColumn->setSpacing(4);
+    auto ramLabel = new QLabel(side); ramLabel->setStyleSheet("color: #c2cbd7; font-size: 10px; border: none;"); ramColumn->addWidget(ramLabel);
+    auto ramBar = new QProgressBar(side); ramBar->setTextVisible(false); ramBar->setFixedHeight(5); ramBar->setRange(0,100);
+    ramBar->setStyleSheet("QProgressBar { background: #151c25; border: none; border-radius: 2px; } QProgressBar::chunk { background: #58c4e5; border-radius: 2px; }");
+    ramBar->setFixedWidth(180); ramColumn->addWidget(ramBar);
+    sideLayout->addLayout(ramColumn);
+    auto updateRam=[ramLabel,ramBar] { const auto total=HardwareInfo::totalRamMiB(); const auto available=qMin(total,HardwareInfo::availableRamMiB()); const auto used=total-available; ramLabel->setText(QString("RAM: %1 / %2 GB").arg(used/1024.0,0,'f',1).arg(total/1024.0,0,'f',1)); ramLabel->setToolTip("Uso de memoria del sistema"); ramBar->setValue(total?int(used*100/total):0); };
+    updateRam(); auto timer=new QTimer(side); connect(timer,&QTimer::timeout,side,updateRam); timer->start(3000);
+    body->addWidget(library); root->addLayout(body,1);
+    root->addWidget(side);
 
+    // Pie de la biblioteca como en el vídeo: carpetas de color a la izquierda y contador a la derecha.
+    auto footer = new QHBoxLayout;
+    footer->setSpacing(8);
+    const QList<QString> footerColors = { "#354757", "#634b2b", "#2d583a", "#38446b", "#63353e" };
+    const QStringList footerGroups = APPLICATION->instances()->getGroups();
+    for (int i = 0; i < footerGroups.size() && i < footerColors.size(); ++i) {
+        auto chip = new QLabel(footerGroups[i].isEmpty() ? BetaShell::t("Ungrouped", "Sin agrupar") : footerGroups[i], page);
+        chip->setStyleSheet(QStringLiteral("QLabel { background: %1; color: #e6edf5; border-radius: 6px; padding: 4px 12px; font-size: 12px; }").arg(footerColors[i]));
+        footer->addWidget(chip);
+    }
+    footer->addStretch();
+    auto footerCount = new QLabel(page);
+    footerCount->setStyleSheet("color: #a4afbf; font-size: 12px; background: transparent; border: none;");
+    footer->addWidget(footerCount);
+    auto updateFooter = [footerCount] {
+        footerCount->setText(BetaShell::t("Instances: %1", "Instancias: %1").arg(APPLICATION->instances()->count()));
+    };
+    updateFooter();
+    connect(APPLICATION->instances(), &InstanceList::dataIsInvalid, footerCount, updateFooter);
+    root->addLayout(footer);
+
+    // Barra lateral y páginas del rediseño (Instancias, Mis Mods, Interfaz, Temas y Colores, Temas, Gatos, Ajustes).
+    auto navigation = new QFrame(page);
+    navigation->setObjectName("betaSideNavigation");
+    navigation->setFixedWidth(206);
+    navigation->setStyleSheet("QFrame#betaSideNavigation { background: #202733; border: 1px solid #364351; border-radius: 12px; }");
+    auto navLayout = new QVBoxLayout(navigation);
+    navLayout->setContentsMargins(10, 14, 10, 12);
+    navLayout->setSpacing(6);
+    auto navBrand = new QLabel(QStringLiteral("Prism Launcher"), navigation);
+    navBrand->setStyleSheet("font-size: 17px; font-weight: 600; color: #f0f4f9; padding: 4px 8px 12px; border: none; background: transparent;");
+    navLayout->addWidget(navBrand);
+    auto pages = new QStackedWidget(page);
+    pages->addWidget(instancesPage);
+    pages->addWidget(BetaShell::shortcutsPage(
+        pages, BetaShell::t("Mods", "Mis Mods"),
+        BetaShell::t("Mods are managed per instance: select one under Instances and open its editor.", "Los mods se gestionan por instancia: selecciona una en Instancias y abre su editor."),
+        { { BetaShell::t("Edit instance", "Editar mods de la instancia"), [this] { ui->actionEditInstance->trigger(); } },
+          { BetaShell::t("Add Instance", "Añadir instancia"), [this] { ui->actionAddInstance->trigger(); } },
+          { BetaShell::t("View Central Mods Folder", "Abrir carpeta de mods central"), [this] { ui->actionViewCentralModsFolder->trigger(); } } }));
+    pages->addWidget(BetaShell::shortcutsPage(
+        pages, BetaShell::t("Interface settings", "Configuración de Interfaz"), BetaShell::t("Shortcuts to the launcher settings.", "Accesos directos a los ajustes del lanzador."),
+        { { BetaShell::t("General", "General"), [this] { APPLICATION->ShowGlobalSettings(this, "launcher-settings"); } },
+          { BetaShell::t("Language", "Idioma"), [this] { APPLICATION->ShowGlobalSettings(this, "language-settings"); } },
+          { BetaShell::t("Appearance", "Apariencia"), [this] { APPLICATION->ShowGlobalSettings(this, "appearance-settings"); } },
+          { QStringLiteral("Minecraft"), [this] { APPLICATION->ShowGlobalSettings(this, "minecraft-settings"); } },
+          { BetaShell::t("Accounts", "Cuentas"), [this] { APPLICATION->ShowGlobalSettings(this, "accounts"); } },
+          { QStringLiteral("Proxy"), [this] { APPLICATION->ShowGlobalSettings(this, "proxy-settings"); } } }));
+    pages->addWidget(BetaShell::colorsPage(pages));
+    pages->addWidget(BetaShell::themesPage(pages));
+    pages->addWidget(BetaShell::catPacksPage(pages));
+    pages->addWidget(BetaSkins::page(pages));
+    auto navGroup = new QButtonGroup(navigation);
+    navGroup->setExclusive(true);
+    const QList<QPair<QString, int>> navItems = { { BetaShell::t("Instances", "Instancias"), 0 },
+                                                  { BetaShell::t("Mods", "Mis Mods"), 1 },
+                                                  { BetaShell::t("Interface settings", "Configuración de Interfaz"), 2 },
+                                                  { BetaShell::t("Themes and colors", "Temas y Colores"), 3 },
+                                                  { BetaShell::t("Themes", "Temas"), 4 },
+                                                  { BetaShell::t("Cat packs", "Gatos (CatPacks)"), 5 },
+                                                  { BetaShell::t("Skins", "Skins"), 6 } };
+    const QStringList navIcons = { "folder", "fork", "list", "edit", "device", "user", "play" };  // icono de cada sección en modo plegado
+    for (const auto& item : navItems) {
+        auto button = new QPushButton(navigation);
+        button->setText(item.first);
+        button->setProperty("betaIconKind", navIcons.value(item.second));
+        button->setCheckable(true);
+        button->setChecked(item.second == 0);
+        button->setCursor(Qt::PointingHandCursor);
+        button->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+        button->setMinimumHeight(40);
+        button->setStyleSheet("QPushButton { text-align: left; padding: 8px 12px; border: 1px solid transparent; border-radius: 9px; color: #cfd8e4; font-size: 13px; background: transparent; }"
+                              "QPushButton:hover { background: #2a3543; }"
+                              "QPushButton:checked { color: #ffffff; border: 1px solid #5ab8d6; background: qlineargradient(x1:0,y1:0,x2:1,y2:0,stop:0 #2f6f84,stop:1 #4f4a8f); }");
+        navGroup->addButton(button, item.second);
+        navLayout->addWidget(button);
+        connect(button, &QToolButton::clicked, pages, [pages, index = item.second] { pages->setCurrentIndex(index); });
+    }
+    auto navSettings = new QPushButton(navigation);
+    navSettings->setText(BetaShell::t("Settings", "Ajustes"));
+    navSettings->setProperty("betaIconKind", QStringLiteral("settings"));
+    navSettings->setCursor(Qt::PointingHandCursor);
+    navSettings->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    navSettings->setMinimumHeight(40);
+    navSettings->setStyleSheet("QPushButton { text-align: left; padding: 8px 12px; border: 1px solid transparent; border-radius: 9px; color: #cfd8e4; font-size: 13px; background: transparent; } QPushButton:hover { background: #2a3543; }");
+    connect(navSettings, &QToolButton::clicked, this, [this] { VideoBeta::showSettings(this); });
+    navLayout->addWidget(navSettings);
+    navLayout->addStretch();
+    // Novedades y actualizaciones: reutilizan las acciones que ya existen en el menú de ayuda.
+    const QList<std::tuple<QString, QString, QAction*>> appLinks = {
+        { BetaShell::t("News", "Novedades"), QStringLiteral("list"), ui->actionMoreNews },
+        { BetaShell::t("Check for updates", "Actualizaciones"), QStringLiteral("device"), ui->actionCheckUpdate },
+    };
+    for (const auto& [linkText, linkIcon, linkAction] : appLinks) {
+        QAction* action = linkAction;  // las lambdas no capturan enlaces estructurados en C++17
+        auto link = new QPushButton(navigation);
+        link->setText(linkText);
+        link->setProperty("betaIconKind", linkIcon);
+        link->setCursor(Qt::PointingHandCursor);
+        link->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+        link->setMinimumHeight(40);
+        link->setStyleSheet("QPushButton { text-align: left; padding: 8px 12px; border: 1px solid transparent; border-radius: 9px; color: #cfd8e4; font-size: 13px; background: transparent; } QPushButton:hover { background: #2a3543; }");
+        link->setEnabled(action->isEnabled());
+        link->setVisible(action->isVisible());
+        connect(action, &QAction::changed, link, [link, action] {
+            link->setEnabled(action->isEnabled());
+            link->setVisible(action->isVisible());
+        });
+        connect(link, &QPushButton::clicked, action, &QAction::trigger);
+        navLayout->addWidget(link);
+    }
+    // Plegado de la barra lateral: botón « y plegado automático en ventanas estrechas.
+    auto navToggle = new QToolButton(navigation);
+    navToggle->setText(QString::fromUtf8("«"));
+    navToggle->setCursor(Qt::PointingHandCursor);
+    navToggle->setToolTip(BetaShell::t("Collapse sidebar", "Plegar barra lateral"));
+    navToggle->setStyleSheet("QToolButton { border: 1px solid #3b4553; border-radius: 8px; color: #cfd8e4; background: #262d39; padding: 4px 10px; } QToolButton:hover { background: #2e3948; }");
+    navLayout->insertWidget(0, navToggle, 0, Qt::AlignRight);
+    auto navButtons = navigation->findChildren<QAbstractButton*>();
+    auto setCollapsed = [navigation, navBrand, navToggle, navButtons](bool collapsed) {
+        navigation->setFixedWidth(collapsed ? 66 : 206);
+        navBrand->setVisible(!collapsed);
+        navToggle->setText(QString::fromUtf8(collapsed ? "»" : "«"));
+        for (auto button : navButtons) {
+            if (button == navToggle) continue;
+            if (button->property("betaFullText").isNull()) button->setProperty("betaFullText", button->text());
+            const QString full = button->property("betaFullText").toString();
+            button->setToolTip(full);
+            const QString kind = button->property("betaIconKind").toString();
+            if (collapsed && !kind.isEmpty()) {
+                button->setText(QString());
+                button->setIcon(VideoBeta::icon(kind));
+                button->setIconSize(QSize(22, 22));
+                button->setStyleSheet(button->styleSheet() + " QPushButton { text-align: center; padding: 8px 0; }");
+            } else {
+                button->setText(full);
+                button->setIcon(QIcon());
+                button->setStyleSheet(button->styleSheet().replace(" QPushButton { text-align: center; padding: 8px 0; }", QString()));
+            }
+        }
+    };
+    connect(navToggle, &QToolButton::clicked, navigation, [navigation, setCollapsed] { setCollapsed(navigation->width() > 100); });
+    page->installEventFilter(new BetaShell::AutoCollapse(page, [setCollapsed, navigation](int width) {
+        const bool narrow = width < 1180;
+        if (narrow != (navigation->width() < 100)) setCollapsed(narrow);
+    }));
+    shellRow->addWidget(navigation);
+    shellRow->addWidget(pages, 1);
+    ui->mainContent->addWidget(page); ui->mainContent->setCurrentWidget(page);
+    ui->mainContent->setMinimumWidth(980);
     setWindowIcon(APPLICATION->logo());
     setWindowTitle(APPLICATION->applicationDisplayName());
 #ifndef QT_NO_ACCESSIBILITY
@@ -268,6 +560,12 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     updateThemeMenu();
     updateMainToolBar();
+    if (auto addButton = qobject_cast<QToolButton*>(ui->mainToolBar->widgetForAction(ui->actionAddInstance))) {
+        addButton->setStyleSheet(QStringLiteral("QToolButton { color: #67e8f9; border: 1px solid rgba(34,211,238,0.55); background: rgba(34,211,238,0.12); }"));
+    }
+    if (auto launchButton = qobject_cast<QToolButton*>(ui->instanceToolBar->widgetForAction(ui->actionLaunchInstance))) {
+        launchButton->setStyleSheet(QStringLiteral("QToolButton { color: #67e8f9; border: 1px solid rgba(34,211,238,0.55); background: rgba(34,211,238,0.12); }"));
+    }
     // OSX magic.
     setUnifiedTitleAndToolBarOnMac(true);
 
@@ -340,16 +638,61 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
         connect(view, &QWidget::customContextMenuRequested, this, &MainWindow::showInstanceContextMenu);
         connect(view, &InstanceView::droppedURLs, this, &MainWindow::processURLs, Qt::QueuedConnection);
 
-        proxymodel = new InstanceProxyModel(this);
+        auto groupModel = new InstanceGroupFilterModel(this);
+        proxymodel = groupModel;
         proxymodel->setSourceModel(APPLICATION->instances());
         proxymodel->sort(0);
+        if (instanceSearch) {
+            connect(instanceSearch, &QLineEdit::textChanged, groupModel, [groupModel](const QString& text) {
+                groupModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
+                groupModel->setFilterFixedString(text);
+            });
+        }
+        if (instanceGroups) {
+            const auto groups = APPLICATION->instances()->getGroups();
+            for (const auto& group : groups) {
+                bool exists = false;
+                for (int i = 0; i < instanceGroups->count(); ++i)
+                    exists |= instanceGroups->tabText(i) == group;
+                if (!exists && !group.isEmpty()) instanceGroups->addTab(group);
+            }
+            connect(APPLICATION->instances(), &InstanceList::groupsChanged, instanceGroups,
+                    [instanceGroups](const QSet<QString>& updatedGroups) {
+                const QString selected = instanceGroups->currentIndex() > 0 ? instanceGroups->tabText(instanceGroups->currentIndex()) : QString();
+                while (instanceGroups->count() > 5) instanceGroups->removeTab(5);
+                QStringList sorted = updatedGroups.values();
+                sorted.sort(Qt::CaseInsensitive);
+                for (const auto& group : sorted) {
+                    bool exists = group.isEmpty();
+                    for (int i = 0; i < instanceGroups->count(); ++i) exists |= instanceGroups->tabText(i) == group;
+                    if (!exists) instanceGroups->addTab(group);
+                }
+                for (int i = 1; i < instanceGroups->count(); ++i)
+                    if (instanceGroups->tabText(i) == selected) instanceGroups->setCurrentIndex(i);
+            });
+            connect(instanceGroups, &QTabBar::currentChanged, groupModel, [groupModel, instanceGroups](int index) {
+                groupModel->setGroupFilter(index <= 0 ? QString() : instanceGroups->tabText(index));
+            });
+        }
         connect(proxymodel, &InstanceProxyModel::dataChanged, this, &MainWindow::instanceDataChanged);
 
         view->setModel(proxymodel);
         view->setSourceOfGroupCollapseStatus(
             [](const QString& groupName) -> bool { return APPLICATION->instances()->isGroupCollapsed(groupName); });
         connect(view, &InstanceView::groupStateChanged, APPLICATION->instances(), &InstanceList::on_GroupStateChanged);
-        ui->horizontalLayout->addWidget(view);
+        view->setStyleSheet(QStringLiteral("background: #171a21; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px;"));
+        libraryStack->addWidget(view);
+        viewMode->setCheckable(true);
+        connect(viewMode, &QToolButton::toggled, view, [this](bool list) { view->setCardListMode(list); });
+        libraryStack->setCurrentWidget(APPLICATION->instances()->rowCount() == 0 ? emptyDashboard : view);
+        auto updateLibraryPage = [this, libraryStack, emptyDashboard] {
+            libraryStack->setCurrentWidget(APPLICATION->instances()->rowCount() == 0 ? emptyDashboard : view);
+        };
+        connect(APPLICATION->instances(), &QAbstractItemModel::rowsInserted, this,
+                [updateLibraryPage](const QModelIndex&, int, int) { updateLibraryPage(); });
+        connect(APPLICATION->instances(), &QAbstractItemModel::rowsRemoved, this,
+                [updateLibraryPage](const QModelIndex&, int, int) { updateLibraryPage(); });
+        connect(APPLICATION->instances(), &QAbstractItemModel::modelReset, this, updateLibraryPage);
     }
     // The cat background
     {
@@ -451,6 +794,24 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
     view->setFocus();
 
     retranslateUi();
+    ui->btnInstances->setText(BetaShell::t("Instances", "Instancias"));
+    ui->btnSettings->setText(BetaShell::t("Settings", "Ajustes"));
+    ui->actionAddInstance->setText(QStringLiteral("Add Instance"));
+    ui->actionChangeInstGroup->setText(BetaShell::t("New Folder", "Nueva carpeta"));
+    ui->actionLaunchInstance->setText(BetaShell::t("Launch", "Lanzar"));
+    ui->actionAccountsButton->setText(QString());
+    if (auto button = findChild<QToolButton*>(QStringLiteral("betaAddInstanceButton")))
+        button->setText(QStringLiteral("Add Instance"));
+    if (auto button = findChild<QToolButton*>(QStringLiteral("betaNewFolderButton")))
+        button->setText(BetaShell::t("New Folder", "Nueva carpeta"));
+    if (auto button = findChild<QToolButton*>(QStringLiteral("betaLaunchButton")))
+        button->setText(BetaShell::t("Launch", "Lanzar"));
+    setWindowTitle(QStringLiteral("Prism Launcher"));
+    ui->mainToolBar->hide();
+    ui->instanceToolBar->hide();
+    ui->newsToolBar->hide();
+    ui->menuBar->hide();
+    ui->statusBar->hide();
 }
 
 // macOS always has a native menu bar, so these fixes are not applicable
@@ -474,6 +835,9 @@ void MainWindow::retranslateUi()
     }
 
     ui->retranslateUi(this);
+    ui->btnInstances->setText(BetaShell::t("Instances", "Instancias"));
+    ui->btnAddInstance->setText(BetaShell::t("Add Instance", "Añadir instancia"));
+    ui->btnSettings->setText(BetaShell::t("Settings", "Ajustes"));
 
     MinecraftAccountPtr defaultAccount = APPLICATION->accounts()->defaultAccount();
     if (defaultAccount) {
@@ -497,6 +861,38 @@ void MainWindow::retranslateUi()
 }
 
 MainWindow::~MainWindow() {}
+
+void MainWindow::showEvent(QShowEvent* event)
+{
+    QMainWindow::showEvent(event);
+    // Application restores translations/title from settings after construction;
+    // reapply the video labels to the custom toolbar once the window is visible.
+    ui->actionAddInstance->setText(QStringLiteral("Add Instance"));
+    ui->actionChangeInstGroup->setText(BetaShell::t("New Folder", "Nueva carpeta"));
+    ui->actionLaunchInstance->setText(BetaShell::t("Launch", "Lanzar"));
+    ui->actionAccountsButton->setText(QString());
+    setWindowTitle(QStringLiteral("Prism Launcher"));
+    if (auto button = findChild<QToolButton*>(QStringLiteral("betaAddInstanceButton")))
+        button->setText(QStringLiteral("Add Instance"));
+    if (auto button = findChild<QToolButton*>(QStringLiteral("betaNewFolderButton")))
+        button->setText(BetaShell::t("New Folder", "Nueva carpeta"));
+    if (auto button = findChild<QToolButton*>(QStringLiteral("betaLaunchButton")))
+        button->setText(BetaShell::t("Launch", "Lanzar"));
+    // Application restores the saved QMainWindow state after construction. Keep
+    // the legacy toolbars hidden so the custom Prism Beta layout stays in place.
+    ui->mainToolBar->hide();
+    ui->instanceToolBar->hide();
+    ui->newsToolBar->hide();
+    ui->menuBar->hide();
+    ui->statusBar->hide();
+    if (m_betaFirstShow) {
+        m_betaFirstShow = false;
+        const auto available = QGuiApplication::primaryScreen()->availableGeometry();
+        const QSize target(qMin(1080, available.width() - 60), qMin(650, available.height() - 80));
+        resize(target.expandedTo(QSize(800, 500)));
+        move(available.center() - rect().center());
+    }
+}
 
 QMenu* MainWindow::createPopupMenu()
 {
@@ -600,6 +996,21 @@ void MainWindow::showInstanceContextMenu(const QPoint& pos)
     }
     QMenu myMenu;
     myMenu.addActions(actions);
+    if (onInstance && m_selectedInstance) {
+        myMenu.addSeparator();
+        auto coverAction = myMenu.addAction(QStringLiteral("Cambiar portada de la tarjeta…"));
+        connect(coverAction, &QAction::triggered, this, [this] {
+            if (!m_selectedInstance) return;
+            const auto path = QFileDialog::getOpenFileName(this, QStringLiteral("Portada de la instancia"), QString(), QStringLiteral("Imágenes (*.png *.jpg *.jpeg *.webp)"));
+            if (path.isEmpty()) return;
+            QImage image(path);
+            if (image.isNull() || !image.save(m_selectedInstance->instanceRoot() + QStringLiteral("/cover.png"))) {
+                QMessageBox::warning(this, QStringLiteral("Portada"), QStringLiteral("No se pudo guardar la imagen de portada."));
+                return;
+            }
+            view->viewport()->update();
+        });
+    }
     /*
     if (onInstance)
         myMenu.setEnabled(m_selectedInstance->canLaunch());
@@ -609,8 +1020,8 @@ void MainWindow::showInstanceContextMenu(const QPoint& pos)
 
 void MainWindow::updateMainToolBar()
 {
-    ui->menuBar->setVisible(APPLICATION->settings()->get("MenuBarInsteadOfToolBar").toBool());
-    ui->mainToolBar->setVisible(ui->menuBar->isNativeMenuBar() || !APPLICATION->settings()->get("MenuBarInsteadOfToolBar").toBool());
+    ui->menuBar->hide();
+    ui->mainToolBar->hide();
 }
 
 void MainWindow::updateLaunchButton()
@@ -913,7 +1324,7 @@ void MainWindow::on_actionCopyInstance_triggered()
     runModalTask(task.get());
 }
 
-void MainWindow::addInstance(const QString& url, const QMap<QString, QString>& extra_info)
+void MainWindow::addInstance(const QString& url, const QMap<QString, QString>& extra_info, const QString& platformPage)
 {
     QString groupName;
     do {
@@ -934,6 +1345,8 @@ void MainWindow::addInstance(const QString& url, const QMap<QString, QString>& e
     }
 
     NewInstanceDialog newInstDlg(groupName, url, extra_info, this);
+    if (!platformPage.isEmpty())
+        newInstDlg.selectPlatform(platformPage);
     if (!newInstDlg.exec())
         return;
 
@@ -1378,7 +1791,7 @@ void MainWindow::checkForUpdates()
 
 void MainWindow::on_actionSettings_triggered()
 {
-    APPLICATION->ShowGlobalSettings(this, "global-settings");
+    VideoBeta::showSettings(this);
 }
 
 void MainWindow::globalSettingsClosed()
@@ -1403,7 +1816,7 @@ void MainWindow::on_actionEditInstance_triggered()
         return;
 
     if (m_selectedInstance->canEdit()) {
-        APPLICATION->showInstanceWindow(m_selectedInstance);
+        APPLICATION->showInstanceWindow(m_selectedInstance, QStringLiteral("version"));
     } else {
         CustomMessageBox::selectable(this, tr("Instance not editable"),
                                      tr("This instance is not editable. It may be broken, invalid, or too old. Check logs for details."),
@@ -1788,6 +2201,8 @@ void MainWindow::updateStatusCenter()
 // Actions that also require other conditions (e.g. a running instance) won't be changed.
 void MainWindow::setInstanceActionsEnabled(bool enabled)
 {
+    ui->actionLaunchInstance->setEnabled(enabled && m_selectedInstance && m_selectedInstance->canLaunch());
+    ui->actionKillInstance->setEnabled(enabled && m_selectedInstance && m_selectedInstance->isRunning());
     ui->actionEditInstance->setEnabled(enabled);
     ui->actionChangeInstGroup->setEnabled(enabled);
     ui->actionViewSelectedInstFolder->setEnabled(enabled);

@@ -61,6 +61,9 @@ class NewInstanceDialog : public QDialog, public BasePageProvider {
 
     void updateDialogState();
 
+    // Abre la página de una plataforma ("modrinth" o "flame") si está disponible.
+    void selectPlatform(const QString& pageId);
+
     void setSuggestedPack(const QString& name = QString(), InstanceTask* task = nullptr);
     void setSuggestedPack(const QString& name, QString version, InstanceTask* task = nullptr);
     void setSuggestedIconFromFile(const QString& path, const QString& name);

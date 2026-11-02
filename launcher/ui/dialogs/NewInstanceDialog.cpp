@@ -74,6 +74,8 @@ NewInstanceDialog::NewInstanceDialog(const QString& initialGroup,
     : QDialog(parent), ui(new Ui::NewInstanceDialog)
 {
     ui->setupUi(this);
+    setWindowTitle(QStringLiteral("Añadir instancia — Plantillas y modpacks"));
+    setStyleSheet(QStringLiteral("QDialog { background: #252d39; } QGroupBox { border: 1px solid #3f4958; border-radius: 8px; margin-top: 16px; padding: 12px; } QGroupBox::title { subcontrol-origin: margin; left: 12px; } QListView::item:selected, QTreeView::item:selected { background: #324a59; color: #e5faff; } QPushButton:default { border: 1px solid #6bc9dc; background: #315265; color: #e6fcff; }"));
 
     setWindowIcon(QIcon::fromTheme("new"));
 
@@ -111,7 +113,8 @@ NewInstanceDialog::NewInstanceDialog(const QString& initialGroup,
     auto OkButton = m_buttons->button(QDialogButtonBox::Ok);
     OkButton->setDefault(true);
     OkButton->setAutoDefault(true);
-    OkButton->setText(tr("OK"));
+    OkButton->setText(tr("Crear instancia"));
+    OkButton->setProperty("betaPrimary", true);
     connect(OkButton, &QPushButton::clicked, this, &NewInstanceDialog::accept);
 
     auto CancelButton = m_buttons->button(QDialogButtonBox::Cancel);
@@ -142,6 +145,13 @@ NewInstanceDialog::NewInstanceDialog(const QString& initialGroup,
         auto geometry = screen->availableSize();
         resize(width(), qMin(geometry.height() - 50, 710));
     }
+
+    // Mantener visibles el catálogo y los cargadores incluso con geometrías antiguas.
+    const auto available = this->screen()->availableGeometry();
+    const int usableWidth = qMax(640, available.width() - 60);
+    const int usableHeight = qMax(480, available.height() - 80);
+    resize(qBound(qMin(1040, usableWidth), width(), usableWidth),
+           qBound(qMin(740, usableHeight), height(), usableHeight));
 
     connect(m_container, &PageContainer::selectedPageChanged, this, &NewInstanceDialog::selectedPageChanged);
 }
@@ -261,6 +271,11 @@ InstanceTask* NewInstanceDialog::extractTask()
     extracted->setGroup(instGroup());
     extracted->setIcon(iconKey());
     return extracted;
+}
+
+void NewInstanceDialog::selectPlatform(const QString& pageId)
+{
+    m_container->selectPage(pageId);
 }
 
 void NewInstanceDialog::updateDialogState()

@@ -62,6 +62,7 @@
 #include "ui/pages/global/AppearancePage.h"
 #include "ui/pages/global/ExternalToolsPage.h"
 #include "ui/pages/global/JavaPage.h"
+#include "ui/BetaWindowStyle.h"
 #include "ui/pages/global/LanguagePage.h"
 #include "ui/pages/global/LauncherPage.h"
 #include "ui/pages/global/MinecraftPage.h"
@@ -640,7 +641,7 @@ Application::Application(int& argc, char** argv) : QApplication(argc, argv)
 
         // Theming
         m_settings->registerSetting("IconTheme", QString());
-        m_settings->registerSetting("ApplicationTheme", QString());
+        m_settings->registerSetting("ApplicationTheme", QString("dark"));
         m_settings->registerSetting("BackgroundCat", QString("kitteh"));
 
         // Remembered state
@@ -1196,6 +1197,7 @@ Application::Application(int& argc, char** argv) : QApplication(argc, argv)
         return;
     }
 
+    installEventFilter(new BetaWindowStyle(this));
     m_themeManager->applyCurrentlySelectedTheme(true);
     performMainStartupAction();
 }

@@ -49,6 +49,7 @@
 #include <QStackedLayout>
 #include <QStyledItemDelegate>
 #include <QUrl>
+#include <QVBoxLayout>
 #include <utility>
 
 #include "settings/SettingsObject.h"
@@ -122,6 +123,10 @@ bool PageContainer::selectPage(QString pageId)
     QModelIndex index;
     if (page) {
         index = m_proxyModel->mapFromSource(m_model->index(page->listIndex));
+        if (!index.isValid() && m_pageSearch && !m_pageSearch->text().isEmpty()) {
+            m_pageSearch->clear();
+            index = m_proxyModel->mapFromSource(m_model->index(page->listIndex));
+        }
     }
     if (!index.isValid()) {
         index = m_proxyModel->index(0, 0);
@@ -151,7 +156,7 @@ const QList<BasePage*>& PageContainer::getPages() const
 void PageContainer::refreshContainer()
 {
     m_proxyModel->invalidate();
-    if (!m_currentPage->shouldDisplay()) {
+    if (!m_currentPage || !m_currentPage->shouldDisplay()) {
         auto index = m_proxyModel->index(0, 0);
         if (index.isValid()) {
             m_pageList->setCurrentIndex(index);
@@ -166,6 +171,32 @@ void PageContainer::createUI()
     m_pageStack = new QStackedLayout;
     m_pageList = new PageView;
     m_header = new QLabel();
+    setObjectName(QStringLiteral("betaPageContainer"));
+    m_header->setObjectName(QStringLiteral("betaPageHeading"));
+    m_header->setWordWrap(true);
+    m_pageList->setObjectName(QStringLiteral("betaPageNavigation"));
+    m_pageList->setSpacing(3);
+    m_pageList->setTextElideMode(Qt::ElideRight);
+    m_pageList->setMinimumWidth(190);
+    m_pageList->setMaximumWidth(250);
+    m_navigation = new QWidget(this);
+    m_navigation->setObjectName(QStringLiteral("betaNavigationPanel"));
+    m_navigation->setMinimumWidth(215);
+    m_navigation->setMaximumWidth(270);
+    auto navigationLayout = new QVBoxLayout(m_navigation);
+    navigationLayout->setContentsMargins(10, 16, 10, 12);
+    navigationLayout->setSpacing(12);
+    auto brand = new QLabel(QStringLiteral("Prism Launcher"), m_navigation);
+    brand->setObjectName(QStringLiteral("betaNavigationBrand"));
+    navigationLayout->addWidget(brand);
+    auto search = new QLineEdit(m_navigation);
+    m_pageSearch = search;
+    search->setPlaceholderText(tr("Buscar sección…"));
+    search->setClearButtonEnabled(true);
+    search->setAccessibleName(tr("Buscar sección"));
+    navigationLayout->addWidget(search);
+    navigationLayout->addWidget(m_pageList, 1);
+    connect(search, &QLineEdit::textChanged, m_proxyModel, &QSortFilterProxyModel::setFilterFixedString);
 
     QFont headerLabelFont = m_header->font();
     headerLabelFont.setBold(true);
@@ -182,14 +213,19 @@ void PageContainer::createUI()
     headerHLayout->setContentsMargins(0, 6, 0, 0);
 
     m_pageStack->setContentsMargins(0, 0, 0, 0);
-    m_pageStack->addWidget(new QWidget(this));
+    auto emptyPage = new QLabel(tr("No hay secciones que coincidan con la búsqueda."), this);
+    emptyPage->setAlignment(Qt::AlignCenter);
+    emptyPage->setWordWrap(true);
+    m_pageStack->addWidget(emptyPage);
 
     m_layout = new QGridLayout;
     m_layout->addLayout(headerHLayout, 0, 1, 1, 1);
-    m_layout->addWidget(m_pageList, 0, 0, 3, 1);
+    m_layout->addWidget(m_navigation, 0, 0, 3, 1);
     m_layout->addLayout(m_pageStack, 1, 1, 1, 1);
     m_layout->setColumnStretch(1, 4);
-    m_layout->setContentsMargins(0, 0, 0, 0);
+    m_layout->setContentsMargins(0, 0, 14, 12);
+    m_layout->setHorizontalSpacing(18);
+    m_layout->setVerticalSpacing(14);
     setLayout(m_layout);
 }
 
@@ -254,7 +290,8 @@ void PageContainer::currentChanged(const QModelIndex& current)
 {
     int selectedIndex = current.isValid() ? m_proxyModel->mapToSource(current).row() : -1;
 
-    auto* selected = m_model->pages().at(selectedIndex);
+    auto* selected = selectedIndex >= 0 && selectedIndex < m_model->pages().size() ? m_model->pages().at(selectedIndex) : nullptr;
+    if (!selected) return;
     auto* previous = m_currentPage;
 
     emit selectedPageChanged(previous, selected);

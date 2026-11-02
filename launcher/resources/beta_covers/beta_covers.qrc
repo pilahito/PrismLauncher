@@ -1,0 +1,11 @@
+<RCC>
+  <qresource prefix="beta-covers">
+    <file>cover0.png</file>
+    <file>cover1.png</file>
+    <file>cover2.png</file>
+    <file>cover3.png</file>
+    <file>cover4.png</file>
+    <file>check.svg</file>
+    <file>down.svg</file>
+  </qresource>
+</RCC>

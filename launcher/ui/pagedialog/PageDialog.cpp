@@ -19,6 +19,7 @@
 #include <QKeyEvent>
 #include <QPushButton>
 #include <QVBoxLayout>
+#include <QScreen>
 
 #include "Application.h"
 #include "settings/SettingsObject.h"
@@ -44,7 +45,8 @@ PageDialog::PageDialog(BasePageProvider* pageProvider, QString defaultId, QWidge
     setLayout(mainLayout);
 
     auto* buttons = new QDialogButtonBox(QDialogButtonBox::Help | QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
-    buttons->button(QDialogButtonBox::Ok)->setText(tr("&OK"));
+    buttons->button(QDialogButtonBox::Ok)->setText(tr("Guardar cambios"));
+    buttons->button(QDialogButtonBox::Ok)->setProperty("betaPrimary", true);
     buttons->button(QDialogButtonBox::Cancel)->setText(tr("&Cancel"));
     buttons->button(QDialogButtonBox::Help)->setText(tr("Help"));
     buttons->setContentsMargins(0, 0, 6, 6);
@@ -55,6 +57,13 @@ PageDialog::PageDialog(BasePageProvider* pageProvider, QString defaultId, QWidge
     connect(buttons->button(QDialogButtonBox::Help), &QPushButton::clicked, m_container, &PageContainer::help);
 
     restoreGeometry(QByteArray::fromBase64(APPLICATION->settings()->get("PagedGeometry").toString().toUtf8()));
+    if (APPLICATION->settings()->get("PagedGeometry").toString().isEmpty()) {
+        const auto available = screen()->availableGeometry();
+        resize(qMin(1060, available.width() - 60), qMin(720, available.height() - 80));
+    }
+    const auto usable = screen()->availableGeometry().size() - QSize(60, 80);
+    resize(qBound(qMin(940, usable.width()), width(), usable.width()),
+           qBound(qMin(640, usable.height()), height(), usable.height()));
 }
 
 void PageDialog::accept()

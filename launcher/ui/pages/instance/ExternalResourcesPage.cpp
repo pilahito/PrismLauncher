@@ -51,6 +51,14 @@ ExternalResourcesPage::ExternalResourcesPage(BaseInstance* instance, ResourceFol
     : QMainWindow(parent), m_instance(instance), ui(new Ui::ExternalResourcesPage), m_model(model)
 {
     ui->setupUi(this);
+    ui->gridLayout->removeWidget(ui->filterEdit);
+    ui->gridLayout->addWidget(ui->filterEdit, 0, 1, 1, 2);
+    ui->filterEdit->setMinimumHeight(38);
+    ui->filterEdit->setPlaceholderText(tr("Buscar mods y recursos…"));
+    addToolBar(Qt::TopToolBarArea, ui->actionsToolbar);
+    ui->actionsToolbar->setOrientation(Qt::Horizontal);
+    ui->actionsToolbar->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    ui->treeView->setStyleSheet(QStringLiteral("QTreeView { background: #252d39; border: 1px solid #3b4655; border-radius: 9px; } QTreeView::item { min-height: 48px; padding: 8px; border-bottom: 1px solid #3c4654; } QTreeView::item:selected { background: #314858; color: #edfaff; } QHeaderView::section { background: #242c37; border: 0; border-bottom: 1px solid #45505e; padding: 10px; color: #adb7c6; }"));
 
     ui->actionsToolbar->insertSpacer(ui->actionViewFolder);
 

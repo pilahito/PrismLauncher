@@ -39,6 +39,7 @@
 #include "ui_AccountListPage.h"
 
 #include <QItemSelectionModel>
+#include <QLocale>
 #include <QMenu>
 #include <QPushButton>
 
@@ -49,10 +50,25 @@
 #include "ui/dialogs/MSALoginDialog.h"
 
 #include "Application.h"
+#include "settings/SettingsObject.h"
+
+// El catálogo español de Prism muestra "2" para esta página; en español usamos el nombre fijo.
+QString AccountListPage::displayName() const
+{
+    QString lang = APPLICATION->settings()->get("Language").toString();
+    if (lang.isEmpty())
+        lang = QLocale::system().name();
+    if (lang.startsWith("es", Qt::CaseInsensitive))
+        return QStringLiteral("Cuentas");
+    return tr("Accounts");
+}
 
 AccountListPage::AccountListPage(QWidget* parent) : QMainWindow(parent), ui(new Ui::AccountListPage)
 {
     ui->setupUi(this);
+    addToolBar(Qt::TopToolBarArea, ui->toolBar);
+    ui->toolBar->setOrientation(Qt::Horizontal);
+    ui->toolBar->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
     ui->listView->setEmptyString(
         tr("Welcome!\n"
            "If you're new here, you can select the \"Add Microsoft\" button to link your Microsoft account."));
@@ -85,8 +101,10 @@ AccountListPage::AccountListPage(QWidget* parent) : QMainWindow(parent), ui(new 
 
     // Xbox authentication won't work without a client identifier, so disable the button if it is missing
     if (~APPLICATION->capabilities() & Application::SupportsMSA) {
-        ui->actionAddMicrosoft->setVisible(false);
-        ui->actionAddMicrosoft->setToolTip(tr("No Microsoft Authentication client ID was set."));
+        ui->actionAddMicrosoft->setVisible(true);
+        ui->actionAddMicrosoft->setEnabled(false);
+        ui->actionAddMicrosoft->setToolTip(tr("El inicio de sesión con Microsoft no está disponible en esta compilación."));
+        ui->listView->setEmptyString(tr("No hay cuentas configuradas.\nEl inicio de sesión con Microsoft no está disponible en esta compilación."));
     }
 }
 

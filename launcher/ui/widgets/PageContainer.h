@@ -90,7 +90,7 @@ class PageContainer : public QWidget, public BasePageContainer {
 
     void changeEvent(QEvent*) override;
 
-    void hidePageList() { m_pageList->hide(); }
+    void hidePageList() { m_navigation->hide(); }
 
    private:
     void createUI();
@@ -114,6 +114,8 @@ class PageContainer : public QWidget, public BasePageContainer {
     PageModel* m_model;
     QStackedLayout* m_pageStack;
     QListView* m_pageList;
+    QWidget* m_navigation = nullptr;
+    QLineEdit* m_pageSearch = nullptr;
     QLabel* m_header;
     QGridLayout* m_layout;
 };

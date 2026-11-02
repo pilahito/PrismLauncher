@@ -54,7 +54,7 @@ InstanceWindow::InstanceWindow(BaseInstance* instance, QWidget* parent) : QMainW
     setAttribute(Qt::WA_DeleteOnClose);
 
     auto icon = APPLICATION->icons()->getIcon(m_instance->iconKey());
-    QString windowTitle = tr("Console window for ") + m_instance->name();
+    QString windowTitle = tr("Editar instancia — %1").arg(m_instance->name());
 
     // Set window properties
     {
@@ -90,6 +90,7 @@ InstanceWindow::InstanceWindow(BaseInstance* instance, QWidget* parent) : QMainW
         m_launchButton->setToolTip(tr("Launch the instance"));
         m_launchButton->setPopupMode(QToolButton::MenuButtonPopup);
         m_launchButton->setMinimumWidth(80);  // HACK!!
+        m_launchButton->setProperty("betaPrimary", true);
         horizontalLayout->addWidget(m_launchButton);
         connect(m_launchButton, &QPushButton::clicked, this, [this] { APPLICATION->launch(m_instance); });
 

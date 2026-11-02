@@ -85,6 +85,7 @@ class MainWindow : public QMainWindow {
     void isClosing();
 
    protected:
+    void showEvent(QShowEvent* event) override;
     QMenu* createPopupMenu() override;
 
    private slots:
@@ -221,7 +222,7 @@ class MainWindow : public QMainWindow {
    private:
     void retranslateUi();
 
-    void addInstance(const QString& url = QString(), const QMap<QString, QString>& extra_info = {});
+    void addInstance(const QString& url = QString(), const QMap<QString, QString>& extra_info = {}, const QString& platformPage = QString());
     void activateInstance(BaseInstance* instance);
     void setCatBackground(bool enabled);
     void updateInstanceToolIcon(QString new_icon);
@@ -251,6 +252,7 @@ class MainWindow : public QMainWindow {
 
     BaseInstance* m_selectedInstance = nullptr;
     QString m_currentInstIcon;
+    bool m_betaFirstShow = true;
 
     // managed by the application object
     Task* m_versionLoadTask = nullptr;

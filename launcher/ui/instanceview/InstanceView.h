@@ -78,6 +78,8 @@ class InstanceView : public QAbstractItemView {
     virtual QRegion visualRegionForSelection(const QItemSelection& selection) const override;
 
     int spacing() const { return m_spacing; };
+    int itemWidth() const;
+    void setCardListMode(bool enabled);
     void setPaintCat(bool visible);
 
    public slots:
@@ -125,7 +127,7 @@ class InstanceView : public QAbstractItemView {
     int m_bottomMargin = 5;
     int m_categoryMargin = 5;
     int m_spacing = 5;
-    int m_itemWidth = 100;
+    int m_itemWidth = 180;
     int m_currentItemsPerRow = -1;
     int m_currentCursorColumn = -1;
     mutable QCache<int, QRect> m_geometryCache;
@@ -147,7 +149,6 @@ class InstanceView : public QAbstractItemView {
     int contentWidth() const;
 
    private: /* methods */
-    int itemWidth() const;
     int calculateItemsPerRow() const;
     int verticalScrollToValue(const QModelIndex& index, const QRect& rect, QListView::ScrollHint hint) const;
     QPixmap renderToPixmap(const QModelIndexList& indices, QRect* r) const;

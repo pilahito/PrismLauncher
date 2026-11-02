@@ -55,6 +55,8 @@ CopyInstanceDialog::CopyInstanceDialog(BaseInstance* original, QWidget* parent)
     : QDialog(parent), ui(new Ui::CopyInstanceDialog), m_original(original)
 {
     ui->setupUi(this);
+    setWindowTitle(QStringLiteral("Fork de instancia — Configuración"));
+    setStyleSheet(QStringLiteral("QDialog { background: #252d39; } QGroupBox { background: #29323f; border: 1px solid #414c5b; border-radius: 8px; margin-top: 18px; padding: 14px; } QGroupBox::title { subcontrol-origin: margin; left: 14px; color: #e4eaf2; } QCheckBox { padding: 5px; } QCheckBox::indicator { width: 24px; height: 15px; border: 1px solid #667483; border-radius: 7px; background: #4b5664; } QCheckBox::indicator:checked { background: #69cba4; border-color: #8ceac3; }"));
     resize(minimumSizeHint());
     layout()->setSizeConstraint(QLayout::SetFixedSize);
 
@@ -111,7 +113,8 @@ CopyInstanceDialog::CopyInstanceDialog(BaseInstance* original, QWidget* parent)
     connect(HelpButton, &QPushButton::clicked, this, &CopyInstanceDialog::help);
     HelpButton->setText(tr("Help"));
     ui->buttonBox->button(QDialogButtonBox::Cancel)->setText(tr("Cancel"));
-    ui->buttonBox->button(QDialogButtonBox::Ok)->setText(tr("OK"));
+    ui->buttonBox->button(QDialogButtonBox::Ok)->setText(tr("Crear copia"));
+    ui->buttonBox->button(QDialogButtonBox::Ok)->setProperty("betaPrimary", true);
 }
 
 CopyInstanceDialog::~CopyInstanceDialog()

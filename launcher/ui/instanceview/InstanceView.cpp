@@ -258,7 +258,16 @@ QString InstanceView::groupNameAt(const QPoint& point)
 
 int InstanceView::calculateItemsPerRow() const
 {
-    return qFloor((qreal)(contentWidth()) / (qreal)(itemWidth() + m_spacing));
+    if (property("betaListMode").toBool()) return 1;
+    return contentWidth() < 650 ? 2 : 3;
+}
+
+void InstanceView::setCardListMode(bool enabled)
+{
+    setProperty("betaListMode", enabled);
+    m_currentItemsPerRow = calculateItemsPerRow();
+    updateGeometries();
+    viewport()->update();
 }
 
 int InstanceView::contentWidth() const
@@ -268,7 +277,8 @@ int InstanceView::contentWidth() const
 
 int InstanceView::itemWidth() const
 {
-    return m_itemWidth;
+    const int columns = calculateItemsPerRow();
+    return qMax(130, contentWidth() / columns - m_spacing);
 }
 
 void InstanceView::mousePressEvent(QMouseEvent* event)
@@ -469,11 +479,11 @@ void InstanceView::paintEvent([[maybe_unused]] QPaintEvent* event)
 
     if (model()->rowCount() == 0) {
         painter.save();
-        QString emptyString = tr("Welcome!") + "\n" + tr("Click \"Add Instance\" to get started.");
+        QString emptyString = QStringLiteral("Aún no tienes instancias\nPulsa «Añadir instancia» para empezar");
 
         // calculate the rect for the overlay
         painter.setRenderHint(QPainter::Antialiasing, true);
-        QFont font("sans", 20);
+        QFont font("sans", 16);
         font.setBold(true);
 
         QRect bounds = viewport()->geometry();
@@ -481,9 +491,8 @@ void InstanceView::paintEvent([[maybe_unused]] QPaintEvent* event)
         auto innerBounds = bounds;
         innerBounds.adjust(10, 10, -10, -10);
 
-        QColor background = QApplication::palette().color(QPalette::WindowText);
-        QColor foreground = QApplication::palette().color(QPalette::Base);
-        foreground.setAlpha(190);
+        QColor background(30, 34, 43, 245);
+        QColor foreground(235, 238, 244);
         painter.setFont(font);
         auto fontMetrics = painter.fontMetrics();
         auto textRect = fontMetrics.boundingRect(innerBounds, Qt::AlignHCenter | Qt::TextWordWrap, emptyString);
@@ -498,8 +507,8 @@ void InstanceView::paintEvent([[maybe_unused]] QPaintEvent* event)
         }
 
         painter.setBrush(QBrush(background));
-        painter.setPen(foreground);
-        painter.drawRoundedRect(wrapRect, 5.0, 5.0);
+        painter.setPen(QPen(QColor(34, 211, 238, 110), 1));
+        painter.drawRoundedRect(wrapRect, 14.0, 14.0);
 
         painter.setPen(foreground);
         painter.setFont(font);
@@ -584,7 +593,7 @@ void InstanceView::resizeEvent([[maybe_unused]] QResizeEvent* event)
         m_currentItemsPerRow = newItemsPerRow;
         updateGeometries();
     } else {
-        updateScrollbar();
+        updateGeometries();
     }
 }
 
