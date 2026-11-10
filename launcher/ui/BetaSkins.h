@@ -227,6 +227,8 @@ public:
         setCursor(Qt::OpenHandCursor);
     }
 
+    void setSlim(bool slim) { m_slim = slim; update(); }
+
     void setTexture(const QImage& img)
     {
         m_tex = img.convertToFormat(QImage::Format_ARGB32);
@@ -246,10 +248,11 @@ protected:
         addBox(faces, QVector3D(-4, 24, -4), QVector3D(8, 8, 8), 32, 0, 8, 8, 8, 0.5f);
         addBox(faces, QVector3D(-4, 12, -2), QVector3D(8, 12, 4), 16, 16, 8, 12, 4, 0.0f);
         addBox(faces, QVector3D(-4, 12, -2), QVector3D(8, 12, 4), 16, 32, 8, 12, 4, 0.25f);
-        addBox(faces, QVector3D(-8, 12, -2), QVector3D(4, 12, 4), 40, 16, 4, 12, 4, 0.0f);
-        addBox(faces, QVector3D(-8, 12, -2), QVector3D(4, 12, 4), 40, 32, 4, 12, 4, 0.25f);
-        addBox(faces, QVector3D(4, 12, -2), QVector3D(4, 12, 4), 32, 48, 4, 12, 4, 0.0f);
-        addBox(faces, QVector3D(4, 12, -2), QVector3D(4, 12, 4), 48, 48, 4, 12, 4, 0.25f);
+        const int arm = m_slim ? 3 : 4;
+        addBox(faces, QVector3D(-4-arm, 12, -2), QVector3D(arm, 12, 4), 40, 16, arm, 12, 4, 0.0f);
+        addBox(faces, QVector3D(-4-arm, 12, -2), QVector3D(arm, 12, 4), 40, 32, arm, 12, 4, 0.25f);
+        addBox(faces, QVector3D(4, 12, -2), QVector3D(arm, 12, 4), 32, 48, arm, 12, 4, 0.0f);
+        addBox(faces, QVector3D(4, 12, -2), QVector3D(arm, 12, 4), 48, 48, arm, 12, 4, 0.25f);
         addBox(faces, QVector3D(-4, 0, -2), QVector3D(4, 12, 4), 0, 16, 4, 12, 4, 0.0f);
         addBox(faces, QVector3D(-4, 0, -2), QVector3D(4, 12, 4), 0, 32, 4, 12, 4, 0.25f);
         addBox(faces, QVector3D(0, 0, -2), QVector3D(4, 12, 4), 16, 48, 4, 12, 4, 0.0f);
@@ -344,12 +347,13 @@ private:
     }
 
     QImage m_tex;
+    bool m_slim = false;
     float m_yaw = -0.6f;
     float m_pitch = 0.25f;
     QPointF m_last;
 };
 
-inline QWidget* page(QWidget* parent)
+inline QWidget* page(QWidget* parent, const QImage& initial = QImage(), bool initialSlim = false, std::function<void(const QString&)> saved = {})
 {
     auto content = new QWidget(parent);
     auto layout = new QVBoxLayout(content);
@@ -362,6 +366,7 @@ inline QWidget* page(QWidget* parent)
 
     auto original = std::make_shared<QImage>();  // skin original para aplicar los modos
     auto canvas = new SkinCanvas(content);
+    if (!initial.isNull()) { *original = initial; canvas->setImage(initial); }
 
     const QString buttonStyle = "QPushButton { background: #262d39; border: 1px solid #3b4553; border-radius: 10px; color: #dbe3ee; padding: 10px 18px; font-size: 13px; }"
                                 "QPushButton:hover { background: #2e3948; border-color: #5bb7d3; }"
@@ -413,6 +418,17 @@ inline QWidget* page(QWidget* parent)
     });
 
     auto model3d = new SkinModel3D(content);
+    model3d->setTexture(canvas->image());
+    model3d->setSlim(initialSlim);
+    auto modelRow = new QHBoxLayout;
+    auto models = new QButtonGroup(content);
+    for (const auto& entry : {std::pair<QString, bool>{QStringLiteral("Clásico (Steve)"), false}, {QStringLiteral("Slim (Alex)"), true}}) {
+        auto button = new QPushButton(entry.first, content);
+        button->setCheckable(true); button->setChecked(entry.second == initialSlim); button->setStyleSheet(buttonStyle);
+        models->addButton(button); modelRow->addWidget(button);
+        QObject::connect(button, &QPushButton::clicked, content, [model3d, slim = entry.second] { model3d->setSlim(slim); });
+    }
+    modelRow->addStretch(); layout->addLayout(modelRow);
     canvas->setChangeHandler([canvas, model3d] { model3d->setTexture(canvas->image()); });
 
     auto editor = new QHBoxLayout;
@@ -468,10 +484,13 @@ inline QWidget* page(QWidget* parent)
     auto save = new QPushButton(BetaShell::t("Save as PNG", "Guardar como PNG"), content);
     save->setStyleSheet(buttonStyle);
     files->addWidget(save);
-    QObject::connect(save, &QPushButton::clicked, content, [content, canvas] {
+    QObject::connect(save, &QPushButton::clicked, content, [content, canvas, saved] {
         const QString path = QFileDialog::getSaveFileName(content, BetaShell::t("Save as PNG", "Guardar como PNG"), "skin.png", "PNG (*.png)");
-        if (!path.isEmpty())
-            canvas->image().save(path, "PNG");
+        if (!path.isEmpty()) {
+            if (!canvas->image().save(path, "PNG"))
+                QMessageBox::warning(content, QStringLiteral("Skin"), QStringLiteral("No se pudo guardar la imagen."));
+            else if (saved) saved(path);
+        }
     });
 
     auto xart = new QPushButton(BetaShell::t("Open XArt editor", "Abrir editor XArt"), content);

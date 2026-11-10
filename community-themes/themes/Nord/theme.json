@@ -1,0 +1,29 @@
+{
+    "colors": {
+        "AlternateBase": "#353B49",
+        "Base": "#2E3440",
+        "BrightText": "#BF616A",
+        "Button": "#353B49",
+        "ButtonText": "#D8DEE9",
+        "Highlight": "#88C0D0",
+        "HighlightedText": "#2E3440",
+        "Link": "#88C0D0",
+        "Text": "#D8DEE9",
+        "ToolTipBase": "#D8DEE9",
+        "ToolTipText": "#D8DEE9",
+        "Window": "#353B49",
+        "WindowText": "#D8DEE9",
+        "fadeAmount": 0.5,
+        "fadeColor": "#353B49"
+    },
+    "logColors": {
+        "Launcher": "#B48EAD",
+        "Error": "#BF616A",
+        "Warning": "#EBCB8B",
+        "Debug": "#A3BE8C",
+        "FatalHighlight": "#BF616A",
+        "Fatal": "#2E3440"
+    },
+    "name": "Nord",
+    "widgets": "Fusion"
+}

@@ -19,6 +19,9 @@
 #include "SkinManageDialog.h"
 #include "ui/dialogs/skins/draw/SkinOpenGLWindow.h"
 #include "ui_SkinManageDialog.h"
+#include "ui/BetaSkins.h"
+#include <QPushButton>
+#include <QVBoxLayout>
 
 #include <FileSystem.h>
 #include <QAction>
@@ -58,6 +61,22 @@ SkinManageDialog::SkinManageDialog(QWidget* parent, MinecraftAccountPtr acct)
     : QDialog(parent), m_acct(acct), m_ui(new Ui::SkinManageDialog), m_list(this, APPLICATION->settings()->get("SkinsDir").toString(), acct)
 {
     m_ui->setupUi(this);
+    auto editorButton = m_ui->buttonBox->addButton(tr("Editar skin"), QDialogButtonBox::ActionRole);
+    connect(editorButton, &QPushButton::clicked, this, [this] {
+        auto skin = getSelectedSkin();
+        const QImage texture = skin ? skin->getTexture() : QImage();
+        const bool slim = skin && skin->getModel() == SkinModel::SLIM;
+        QDialog editor(this);
+        editor.setWindowTitle(tr("Editar skin"));
+        auto layout = new QVBoxLayout(&editor);
+        layout->addWidget(BetaSkins::page(&editor, texture, slim, [this](const QString& path) {
+            const auto error = m_list.installSkin(path, {});
+            if (!error.isEmpty()) QMessageBox::warning(this, tr("Skin"), error);
+        }));
+        editor.resize(1100, 780);
+        editor.exec();
+    });
+
 
     if (SkinOpenGLWindow::hasOpenGL()) {
         m_skinPreview = new SkinOpenGLWindow(this, palette().color(QPalette::Normal, QPalette::Base));
@@ -83,7 +102,7 @@ SkinManageDialog::SkinManageDialog(QWidget* parent, MinecraftAccountPtr acct)
     contentsWidget->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
     contentsWidget->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     contentsWidget->installEventFilter(this);
-    contentsWidget->setItemDelegate(new ListViewDelegate(this));
+    // El gestor usa el delegado estándar: las skins no son instancias.
 
     contentsWidget->setAcceptDrops(true);
     contentsWidget->setDropIndicatorShown(true);

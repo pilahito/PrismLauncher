@@ -68,15 +68,15 @@ class AutoCollapse : public QObject {
 
 inline const char* cardStyle()
 {
-    return "QToolButton { background: #262d39; border: 1px solid #3b4553; border-radius: 12px; color: #dbe3ee; padding: 10px; font-size: 13px; }"
-           "QToolButton:hover { background: #2e3948; border-color: #5bb7d3; }"
-           "QToolButton:checked { background: #26414f; border: 2px solid #62d0e6; color: #ffffff; }";
+    return "QToolButton { background: palette(button); border: 1px solid palette(mid); border-radius: 12px; color: palette(button-text); padding: 10px; font-size: 13px; }"
+           "QToolButton:hover { background: palette(highlight); border-color: palette(highlight); }"
+           "QToolButton:checked { background: palette(highlight); border: 2px solid palette(highlight); color: palette(highlighted-text); }";
 }
 
 inline QLabel* heading(const QString& text, QWidget* parent)
 {
     auto label = new QLabel(text, parent);
-    label->setStyleSheet("font-size: 20px; font-weight: 600; color: #eef3f9; background: transparent; border: none;");
+    label->setStyleSheet("font-size: 20px; font-weight: 600; color: palette(window-text); background: transparent; border: none;");
     return label;
 }
 
@@ -84,7 +84,7 @@ inline QLabel* hint(const QString& text, QWidget* parent)
 {
     auto label = new QLabel(text, parent);
     label->setWordWrap(true);
-    label->setStyleSheet("font-size: 13px; color: #a4afbf; background: transparent; border: none;");
+    label->setStyleSheet("font-size: 13px; color: palette(window-text); background: transparent; border: none;");
     return label;
 }
 
